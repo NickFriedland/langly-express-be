@@ -13,9 +13,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('browser'));
 
 // Load homepage
-app.get('/', (req, res) => {
-  return res.render('index');
-});
+// app.get('/', (req, res) => {
+//   return res.render('index');
+// });
 
 // format content with GET request to the Mercury API
 async function formatContent(url) {
@@ -32,6 +32,8 @@ async function formatContent(url) {
     `https://mercury.postlight.com/parser?url=${url}`,
     config
   );
+
+  console.log('RESULT', result);
 
   // Convert res data content from HTML to text
   let content = htmlToText.fromString(result.data.content, {
@@ -76,8 +78,7 @@ async function getReadability(content) {
 app.post('/', async function(req, res, next) {
   try {
     let content;
-    // if req.body is URL
-    // console.log('REQ BODY', req.body);
+    
     if (req.body.url) {
       content = await formatContent(req.body.url);
     }
