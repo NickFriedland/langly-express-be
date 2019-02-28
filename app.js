@@ -16,8 +16,7 @@ app.use(express.static('browser'));
 
 // format content with GET request to the Mercury API
 async function formatContent(url) {
-
-  // configure headers for Mercury API
+  // Mercury API requires API key from config file
   let config = {
     headers: {
       // 'Access-Control-Allow-Origin':'http://localhost:3001',
@@ -26,19 +25,21 @@ async function formatContent(url) {
     }
   };
 
-  // GET request to Mercury API
   let result = await axios.get(
     `https://mercury.postlight.com/parser?url=${url}`,
     config
   );
 
-  // Convert res data content from HTML to text
+  // Can html to text be further customized to ensure clean content?
+  // What are main fail cases for html > text?
   let content = htmlToText.fromString(result.data.content, {
     ignoreImage: true,
     ignoreHref: true
   });
 
-  return content;
+  result.data['content'] = content;
+
+  return result.data;
 }
 
 // translate content with POST req to Google Translate API
@@ -63,33 +64,72 @@ function tokenizeText(str, tokens) {
     str = str.split(tokens[i]).join(tempChar);
   }
   str = str.split(tempChar);
+
   return str;
 }
 
-// POST res data from google translate API to readability.py microservice
-async function getReadability(content) {
+// POST to get raw readability score from readability.py microservice
+async function getRawReadability(content) {
   return await axios.post('http://localhost:5000/readability', { content });
 }
 
-// POST route to accept request from front end, manipulate, return response
+function calculateAvgReadability(results) {
+  let total = 0;
+  let readabilityScores = results.data['readability grades'];
+
+  // Standardize each raw alg score to format out of 14 grade levels
+  for (let test in readabilityScores) {
+    let rawScore = Math.floor((Number(readabilityScores[test])));
+    if (test === 'FleschReadingEase') {
+      if (rawScore < 39) {
+        total += (6 / 84) * 14;
+      } else {
+        total += ((rawScore - 30) / 84) * 14;
+      }
+    } else if (test === 'RIX') {
+      total += (rawScore / 6.5) * 14;
+    } else if (test === 'LIX') {
+      total += (rawScore / 60) * 14;
+    } else {
+      total += rawScore;
+    }
+  }
+
+  let avg = Math.floor(total / 7);
+
+  if (avg <= 2) return 'A1';
+  if (avg <= 4) return 'A2';
+  if (avg <= 6) return 'B1';
+  if (avg <= 8) return 'B2';
+  if (avg <= 10) return 'C1';
+  if (avg <= 12) return 'C2';
+  if (avg <= 14) return 'D1';
+}
+
+// POST route accepts url, runs helper methods, returns content + readability
 app.post('/', /* cors(corsOptions), */ async function(req, res, next) {
   try {
-    let content;
+    let articleObj;
     
     if (req.body.url) {
-      content = await formatContent(req.body.url);
+      articleObj = await formatContent(req.body.url);
     }
 
-    if (content === undefined) {
-      content = req.body.text;
+    if (articleObj.content === undefined) {
+      articleObj.content = req.body.text;
     }
 
-    let tokenized = tokenizeText(content, ['.', '?', '!']);
+    let tokenized = tokenizeText(articleObj.content, ['.', '?', '!']);
 
-    let results = await getReadability(tokenized);
+    let rawScores = await getRawReadability(tokenized);
 
-    return res.json(results.data['readability grades']); // also return json from formatContent
+    let adjustedScore = calculateAvgReadability(rawScores);
+
+    articleObj['readability'] = adjustedScore;
+
+    return res.json(articleObj);
   } catch (error) {
+    console.log('ERROR', error);
     return next(error);
   }
 });
