@@ -55,7 +55,6 @@ function calculateAvgReadability(rawScores) {
 
   // Standardize each raw alg score to format out of 14 grade levels
   for (let test in readabilityScores) {
-    console.log('TEST', test);
     let rawScore = Math.floor((Number(readabilityScores[test])));
     // This logic is likely backward. FRE is only DESC scale.
     if (test === 'FleschReadingEase') {
@@ -107,7 +106,6 @@ app.post('/', async function(req, res, next) {
     let rawScores = await getRawReadability(tokenized);
 
     let adjustedScore = calculateAvgReadability(rawScores);
-    console.log('ADJUSTED', adjustedScore);
 
     articleObj['readability'] = adjustedScore;
 
