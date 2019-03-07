@@ -14,32 +14,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('browser'));
 
-// format content with GET request to the Mercury API
-async function formatContent(url) {
-  // Mercury API requires API key from config file
-  let config = {
-    headers: {
-      // 'Access-Control-Allow-Origin':'http://localhost:3001',
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.MercuryAPIKey
-    }
-  };
-
-  let result = await axios.get(
-    `https://mercury.postlight.com/parser?url=${url}`,
-    config
-  );
-
-  // Can html to text be further customized to ensure clean content?
-  // What are main fail cases for html > text?
-  let content = htmlToText.fromString(result.data.content, {
-    ignoreImage: true,
-    ignoreHref: true
-  });
-
-  result.data['content'] = content;
-
-  return result.data;
+// Parse article data from url using Newspaper API
+async function parseArticle(url) {
+  return await axios.post('http://localhost:5000/parse', { url });
 }
 
 // translate content with POST req to Google Translate API
@@ -73,13 +50,15 @@ async function getRawReadability(content) {
   return await axios.post('http://localhost:5000/readability', { content });
 }
 
-function calculateAvgReadability(results) {
+function calculateAvgReadability(rawScores) {
   let total = 0;
-  let readabilityScores = results.data['readability grades'];
+  let readabilityScores = rawScores.data['readability grades'];
 
   // Standardize each raw alg score to format out of 14 grade levels
   for (let test in readabilityScores) {
+    console.log('TEST', test);
     let rawScore = Math.floor((Number(readabilityScores[test])));
+    // This logic is likely backward. FRE is only DESC scale.
     if (test === 'FleschReadingEase') {
       if (rawScore < 39) {
         total += (6 / 84) * 14;
@@ -103,27 +82,33 @@ function calculateAvgReadability(results) {
   if (avg <= 8) return 'B2';
   if (avg <= 10) return 'C1';
   if (avg <= 12) return 'C2';
-  if (avg <= 14) return 'D1';
+  
+  return 'D1';
 }
 
 // POST route accepts url, runs helper methods, returns content + readability
-app.post('/', /* cors(corsOptions), */ async function(req, res, next) {
+app.post('/', async function(req, res, next) {
   try {
     let articleObj;
+    let parsed;
     
     if (req.body.url) {
-      articleObj = await formatContent(req.body.url);
+      parsed = await parseArticle(req.body.url);
+      articleObj = parsed.data;
+    }
+    
+    let { text } = articleObj
+
+    if (text === undefined) {
+      text = req.body.text;
     }
 
-    if (articleObj.content === undefined) {
-      articleObj.content = req.body.text;
-    }
-
-    let tokenized = tokenizeText(articleObj.content, ['.', '?', '!']);
+    let tokenized = tokenizeText(text, ['.', '?', '!']);
 
     let rawScores = await getRawReadability(tokenized);
 
     let adjustedScore = calculateAvgReadability(rawScores);
+    console.log('ADJUSTED', adjustedScore);
 
     articleObj['readability'] = adjustedScore;
 
