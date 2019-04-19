@@ -23,5 +23,5 @@ $('form').on('submit', function(e) {
   let url = $urlInput.val();
   $urlInput.val('');
 
-  $.post('http://localhost:3000/', { url }, showResults);
+  $.post('https://langly-readability.herokuapp.com/', { url }, showResults);
 });
