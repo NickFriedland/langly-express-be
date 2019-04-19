@@ -15,7 +15,7 @@ app.use(express.static('browser'));
 
 // Parse article data from url using Newspaper API
 async function parseArticle(url) {
-  return await axios.post('http://localhost:5000/parse', { url });
+  return await axios.post('https://langly-ms.herokuapp.com/parse', { url });
 }
 
 // translate content with POST req to Google Translate API
@@ -46,7 +46,7 @@ function tokenizeText(str, tokens) {
 
 // POST to get raw readability score from readability.py microservice
 async function getRawReadability(content) {
-  return await axios.post('http://localhost:5000/readability', { content });
+  return await axios.post('https://langly-ms.herokuapp.com/readability', { content });
 }
 
 function calculateAvgReadability(rawScores) {
