@@ -15,9 +15,7 @@ app.use(express.static('browser'));
 
 // Parse article data from url using Newspaper API
 async function parseArticle(url) {
-  return await axios.post('https://langly-ms.herokuapp.com/parse', { 
-    url,
-  });
+  return await axios.post('https://langly-ms.herokuapp.com/parse', { url });
 }
 
 // translate content with POST req to Google Translate API
@@ -85,13 +83,6 @@ function calculateAvgReadability(rawScores) {
   
   return 'D1';
 }
-
-// Enable CORS
-app.use(function(req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  next();
-});
 
 // POST route accepts url, runs helper methods, returns content + readability
 app.post('/', async function(req, res, next) {
