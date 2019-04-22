@@ -131,4 +131,8 @@ app.use(function(err, req, res, next) {
   return res.status(status).json({ status, message: err.message });
 });
 
-app.listen(3001, () => console.log('App on port 3001'));
+// app.listen(process.env.PORT || 3001, () => console.log('App on port 3001'));
+
+app.listen(process.env.PORT || 3001, function(){
+  console.log("Express server listening on port %d in %s mode", this.address().port, app.settings.env);
+});
