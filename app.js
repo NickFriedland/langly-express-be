@@ -15,7 +15,9 @@ app.use(express.static('browser'));
 
 // Parse article data from url using Newspaper API
 async function parseArticle(url) {
-  return await axios.post('https://langly-ms.herokuapp.com/parse', { url });
+  // 1st attempt to dictate endpoint URL by NODE_ENV
+  const endpoint = process.env.NODE_ENV === 'development' ? 'http://localhost:5000/parse' : 'https://langly-ms.herokuapp.com/parse';
+  return await axios.post(endpoint, { url });
 }
 
 // translate content with POST req to Google Translate API
@@ -46,7 +48,9 @@ function tokenizeText(str, tokens) {
 
 // POST to get raw readability score from readability.py microservice
 async function getRawReadability(content) {
-  return await axios.post('https://langly-ms.herokuapp.com/readability', { content });
+  // 1st attempt to dictate endpoint URL by NODE_ENV
+  const endpoint = process.env.NODE_ENV === 'development' ? 'http://localhost:5000/readability' : 'https://langly-ms.herokuapp.com/readability';
+  return await axios.post(endpoint, { content });
 }
 
 function calculateAvgReadability(rawScores) {
@@ -86,6 +90,7 @@ function calculateAvgReadability(rawScores) {
 
 // POST route accepts url, runs helper methods, returns content + readability
 app.post('/', async function(req, res, next) {
+  console.log('MADE IT HERE:', process.env.NODE_ENV);
   try {
     let articleObj;
     let parsed;
@@ -130,8 +135,6 @@ app.use(function(err, req, res, next) {
 
   return res.status(status).json({ status, message: err.message });
 });
-
-// app.listen(process.env.PORT || 3001, () => console.log('App on port 3001'));
 
 app.listen(process.env.PORT || 3001, function(){
   console.log("Express server listening on port %d in %s mode", this.address().port, app.settings.env);

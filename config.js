@@ -10,4 +10,4 @@ process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(
 // When posting to google API, Google says daily limit exceeded. May have to do with environment state
 // Does Google provide any info in the dashboard around requests?
 
-process.env.NODE_ENV = 'development';
+process.env.NODE_ENV = process.env.PORT === '3001' ? 'development' : 'production';
